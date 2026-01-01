@@ -3,202 +3,195 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>PHIfold: Sonic Physics</title>
+    <meta name="theme-color" content="#000000">
+    <title>PHIFOLD: Kinetic Genesis</title>
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@8.1.0/dist/pixi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/planck@1.4.2/dist/planck.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tone@15.1.22/build/Tone.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tone@15.1.22/build/Tone.min.js"></script>
     <style>
-        :root { --phi: 1.61803398875; }
-        * { box-sizing: border-box; touch-action: none; user-select: none; }
-        body { margin: 0; background: #000; color: #fff; font-family: monospace; overflow: hidden; height: 100dvh; display: flex; align-items: center; justify-content: center; }
-
-        #void-wrap {
-            position: relative;
-            width: 100dvw; height: 100dvw;
-            max-width: 100dvh; max-height: 100dvh;
-            filter: contrast(28) blur(6px);
-            background: radial-gradient(circle at center, #111 0%, #000 75%);
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-        }
-
-        #genesis-card {
-            position: absolute;
-            width: 18dvmin; height: 26dvmin;
-            background: #fff;
-            border-radius: 4px;
-            z-index: 10;
-        }
-
-        .particle {
-            position: absolute;
-            background: #fff;
-            border-radius: 50%;
-            will-change: transform;
-            pointer-events: none;
-        }
-
-        #ui { position: fixed; bottom: 5dvh; width: 100%; text-align: center; z-index: 100; pointer-events: none; }
-        #manifest-btn { pointer-events: auto; background: #fff; padding: 15px 35px; border: none; font-weight: bold; letter-spacing: 5px; display: none; cursor: pointer;}
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        body, html { width: 100%; height: 100%; background: #000; overflow: hidden; touch-action: none; }
+        #canvas-container { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
         
-        #intro { position: fixed; inset: 0; background: #000; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
+        /* The Secret Sauce: Liquid CSS Filter */
+        canvas { filter: contrast(35) blur(12px); background: #000; }
+
+        #ui { 
+            position: fixed; bottom: 8%; width: 100%; text-align: center; 
+            color: #555; font-family: 'Courier New', monospace; letter-spacing: 0.3rem; 
+            pointer-events: none; z-index: 100; font-size: 10px;
+        }
+        #intro {
+            position: fixed; inset: 0; background: #000; z-index: 1000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; font-family: monospace; color: #fff;
+        }
+        #intro h1 { letter-spacing: 1.5rem; font-weight: 100; margin-bottom: 20px; }
     </style>
 </head>
 <body>
 
-    <div id="intro" onclick="initAudio()">
-        <h1 style="letter-spacing: 15px;">PHIFOLD</h1>
-        <p style="color: #444;">TAP TO INITIATE SONIC FLOW</p>
+    <div id="intro" onclick="start()">
+        <h1>PHIFOLD</h1>
+        <p style="color:#444; letter-spacing: 0.5rem;">[ CLICK TO OBSERVE ]</p>
     </div>
     
-    <div id="void-wrap" onpointerdown="handleRepel(event)">
-        <div id="genesis-card"></div>
-    </div>
-
+    <div id="canvas-container"></div>
+    
     <div id="ui">
-        <button id="manifest-btn" onclick="manifest()">MANIFEST</button>
-        <div style="margin-top: 15px; color: #333; font-size: 10px; letter-spacing: 3px;">
-            STABILITY: <span id="e-pct">0</span>%
-        </div>
+        CORE_STABILITY: <span id="idx" style="color:#888">0.000</span>
     </div>
 
     <script>
-        const { Vec2, World, Circle, Box, DistanceJoint } = planck;
-        const world = new World({ gravity: Vec2(0, 0) });
+        const { Vec2, World, Circle, DistanceJoint } = planck;
         const PHI = 1.61803398875;
-        const TARGET = Math.PI * PHI;
+        const THRESHOLD = Math.PI * PHI;
+        const P_SCALE = 15; // 1 Planck meter = 15 Pixi pixels
         
-        let energy = 0, blobGroups = [], isActive = false;
+        let app, world, drone, synth, energy = 0, clusters = [], active = false;
+        let horizon;
 
-        // --- AUDIO SETUP (Tone.js v15.1.22) ---
-        let drone, splashSynth, filter;
-
-        async function initAudio() {
+        async function start() {
             await Tone.start();
-            document.getElementById('intro').style.display = 'none';
-            isActive = true;
-
-            // Low-pass filter for the drone to give it a "void" feel
-            filter = new Tone.AutoFilter("4n").toDestination().start();
+            document.getElementById('intro').remove();
             
-            // Background Drone
-            drone = new Tone.PolySynth(Tone.Synth, {
+            // Audio: FM Drone for richer "void" texture
+            drone = new Tone.FMSynth({
+                harmonicity: 3, modulationIndex: 10,
                 oscillator: { type: "sine" },
-                envelope: { attack: 2, release: 2 }
-            }).connect(filter);
-            drone.set({ volume: -20 });
-            drone.triggerAttack(["E2", "B2"]);
-
-            // Repel sound (Splash)
-            splashSynth = new Tone.MetalSynth({
-                frequency: 200,
-                envelope: { attack: 0.01, decay: 0.2, release: 0.2 },
-                harmonicity: 5.1,
-                modulationIndex: 32,
-                resonance: 4000,
-                octaves: 1.5
+                envelope: { attack: 2 }
             }).toDestination();
-            splashSynth.volume.value = -15;
+            drone.volume.value = -30;
+            drone.triggerAttack("E2");
 
-            run();
-            setInterval(() => { if (isActive && blobGroups.length < 7) spawnMolecularBlob(); }, 1500);
+            synth = new Tone.MembraneSynth().toDestination();
+
+            // PIXI v8 Setup
+            app = new PIXI.Application();
+            await app.init({ 
+                width: 800, height: 800, 
+                backgroundColor: 0x000000,
+                antialias: true,
+                resolution: window.devicePixelRatio || 1
+            });
+            document.getElementById('canvas-container').appendChild(app.canvas);
+
+            world = new World(Vec2(0, 0));
+
+            // Stability Horizon (The Ring)
+            horizon = new PIXI.Graphics();
+            app.stage.addChild(horizon);
+
+            // Genesis Card Reference
+            const card = new PIXI.Graphics()
+                .rect(-45, -65, 90, 130)
+                .stroke({ width: 2, color: 0x111111 });
+            card.x = 400; card.y = 400;
+            app.stage.addChild(card);
+
+            active = true;
+            app.ticker.add(update);
+            
+            // Spawner
+            setInterval(() => { if(clusters.length < 12) spawn(); }, 1500);
+
+            // Kinetic Interaction
+            app.canvas.addEventListener('pointerdown', pulse);
         }
 
-        // --- PHYSICS & LOGIC ---
-        const cardBody = world.createBody();
-        cardBody.createFixture({ shape: Box(1.0, 1.4) });
-
-        function spawnMolecularBlob() {
+        function spawn() {
             const angle = Math.random() * Math.PI * 2;
-            const r = 9;
-            const origin = Vec2(Math.cos(angle) * r, Math.sin(angle) * r);
-            const cluster = { bodies: [], elements: [], mass: 0 };
-            const numNodes = 3;
+            const dist = 25; // Planck meters
+            const origin = Vec2(Math.cos(angle) * dist, Math.sin(angle) * dist);
+            const cluster = { bodies: [], graphics: [], mass: 0 };
 
-            for(let i = 0; i < numNodes; i++) {
-                const nodeBody = world.createDynamicBody({
-                    position: Vec2(origin.x + Math.random(), origin.y + Math.random()),
+            // Create a "Double-Node" Molecular Spark
+            for(let i = 0; i < 2; i++) {
+                const m = 0.4 + (Math.random() * 0.5);
+                const b = world.createDynamicBody({ 
+                    position: Vec2(origin.x + i, origin.y), 
                     linearDamping: 1.5,
-                    angularDamping: 0.5
+                    angularDamping: 1.0
                 });
+                b.createFixture(Circle(m * 0.6), { density: 1, friction: 0.1 });
 
-                const nodeMass = 0.2 + (Math.random() * 0.4);
-                nodeBody.createFixture({ shape: Circle(nodeMass * 0.4), density: 1.0 });
+                const g = new PIXI.Graphics().circle(0, 0, m * 25).fill(0xffffff);
+                app.stage.addChild(g);
 
-                const el = document.createElement('div');
-                el.className = 'particle';
-                el.style.width = el.style.height = (nodeMass * 14) + 'dvmin';
-                document.getElementById('void-wrap').appendChild(el);
+                cluster.bodies.push(b);
+                cluster.graphics.push(g);
+                cluster.mass += m;
 
-                cluster.bodies.push(nodeBody);
-                cluster.elements.push(el);
-                cluster.mass += nodeMass;
-
-                if (i > 0) {
+                if(i > 0) {
                     world.createJoint(DistanceJoint({
-                        bodyA: cluster.bodies[i-1], bodyB: nodeBody,
-                        length: 0.5, frequencyHz: 2.0, dampingRatio: 0.5
+                        bodyA: cluster.bodies[0], bodyB: b,
+                        length: 1.0, frequencyHz: 3.0, dampingRatio: 0.1
                     }));
                 }
             }
-            blobGroups.push(cluster);
+            clusters.push(cluster);
         }
 
-        function handleRepel(e) {
-            if (!isActive) return;
-            const rect = document.getElementById('void-wrap').getBoundingClientRect();
-            const clickVec = Vec2(((e.clientX - rect.left) / rect.width * 20) - 10, ((e.clientY - rect.top) / rect.height * 20) - 10);
+        function pulse(e) {
+            if(!active) return;
+            const rect = app.canvas.getBoundingClientRect();
+            const px = ((e.clientX - rect.left) / rect.width * 53.33) - 26.66;
+            const py = ((e.clientY - rect.top) / rect.height * 53.33) - 26.66;
+            const pVec = Vec2(px, py);
 
-            // Play "splash" sound
-            splashSynth.triggerAttackRelease("C2", "16n");
+            synth.triggerAttackRelease("G1", "16n");
 
-            blobGroups.forEach(group => {
-                group.bodies.forEach(body => {
-                    const diff = Vec2(body.getPosition().x - clickVec.x, body.getPosition().y - clickVec.y);
-                    if (diff.length() < 5) {
-                        body.applyLinearImpulse(diff.normalize().mul(3.0), body.getWorldCenter());
-                    }
-                });
-            });
+            clusters.forEach(c => c.bodies.forEach(b => {
+                const d = Vec2.sub(b.getPosition(), pVec);
+                const len = d.length();
+                if(len < 15) {
+                    b.applyLinearImpulse(d.normalize().mul(20 / (len + 1)), b.getWorldCenter());
+                }
+            }));
         }
 
-        function run() {
-            if (!isActive) return;
+        function update(ticker) {
+            if(!active) return;
+            
+            // Standardizing time step
             world.step(1/60);
+            const time = performance.now() * 0.005;
 
-            blobGroups.forEach(group => {
-                group.bodies.forEach((body, bIdx) => {
-                    const pos = body.getPosition();
-                    body.applyForceToCenter(Vec2(-pos.x, -pos.y).normalize().mul(1.5 * group.mass));
-                    group.elements[bIdx].style.transform = `translate(${pos.x * 5}dvmin, ${pos.y * 5}dvmin) translate(-50%, -50%)`;
-                    if (pos.length() < 1.2) energy += 0.006;
+            clusters.forEach(c => {
+                c.bodies.forEach((b, i) => {
+                    const pos = b.getPosition();
+                    const dist = pos.length();
+                    
+                    // Gravitational Pull towards Center (0,0)
+                    b.applyForceToCenter(Vec2(-pos.x, -pos.y).normalize().mul(3.0 * c.mass));
+
+                    // Sync Visuals
+                    const g = c.graphics[i];
+                    // Fluctuating geometry
+                    const pulse = Math.sin(time + (clusters.indexOf(c) * PHI)) * 5;
+                    g.width = g.height = (c.mass * 25) + pulse;
+
+                    // Map Planck meters to Pixi Pixels
+                    g.x = 400 + (pos.x * P_SCALE);
+                    g.y = 400 + (pos.y * P_SCALE);
+
+                    // Stability Gathering
+                    if (dist < 8) energy += 0.012;
                 });
             });
 
-            if (energy > 0) energy -= (Math.pow(energy, 1.4) * 0.005);
-            const progress = Math.min(100, (energy / TARGET) * 100);
-            document.getElementById('e-pct').innerText = Math.floor(progress);
+            // Entropy Decay
+            energy = Math.max(0, energy - (Math.pow(energy, 1.4) * 0.005));
+            const stability = Math.min(1, energy / THRESHOLD);
+            document.getElementById('idx').innerText = stability.toFixed(3);
+            
+            // Visual Event Horizon logic
+            horizon.clear()
+                .circle(400, 400, 100 + stability * 50)
+                .stroke({ width: 1, color: 0x222222 + (Math.floor(stability * 200) << 16) });
 
-            // Audio Modulation: Drone pitch rises with stability
-            if (drone) {
-                const pitchShift = progress * 2; // Range 0 to 200 cents
-                drone.set({ detune: pitchShift });
-                filter.baseFrequency = 200 + (progress * 5);
-            }
-
-            if (energy >= TARGET) document.getElementById('manifest-btn').style.display = 'inline-block';
-            else document.getElementById('manifest-btn').style.display = 'none';
-
-            requestAnimationFrame(run);
-        }
-
-        function manifest() {
-            isActive = false;
-            drone.releaseAll();
-            new Tone.Oscillator(440, "sine").toDestination().start().stop("+0.5");
-            document.getElementById('void-wrap').style.filter = 'none';
-            document.getElementById('genesis-card').style.transition = 'all 1s ease';
-            document.getElementById('genesis-card').style.transform = 'scale(0.2) translate(-200%, 200%)';
-            setTimeout(() => alert("PHIFOLD STABILIZED"), 1000);
+            // Audio Modulation
+            drone.detune.value = stability * 400;
         }
     </script>
 </body>
