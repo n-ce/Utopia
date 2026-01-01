@@ -2,117 +2,126 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PHIfold: Genesis Transition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <title>PHIfold: Genesis POC</title>
     <style>
         :root {
             --phi: 1.61803398875;
-            --pi: 3.14159265359;
-            --threshold: 5.0832; /* PI * PHI */
+            --threshold: 5.083203;
+        }
+
+        * {
+            box-sizing: border-box;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
         }
 
         body {
             margin: 0;
             padding: 0;
-            background-color: #050505;
+            background-color: #000;
             color: #fff;
             font-family: 'Courier New', Courier, monospace;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            height: 100dvh;
+            width: 100dvw;
             overflow: hidden;
         }
 
-        /* 1:1 Responsive Container (The Trampoline) */
+        /* 1:1 Responsive Container using dvmin */
         #void-bed {
             position: relative;
-            width: 90vmin;
-            height: 90vmin;
-            background: radial-gradient(circle at center, #0a0a0a 0%, #000 80%);
-            border: 1px solid #1a1a1a;
-            border-radius: 50%;
-            box-shadow: 0 0 50px rgba(255,255,255,0.02);
-            overflow: hidden;
+            width: 90dvmin;
+            height: 90dvmin;
+            background: radial-gradient(circle at center, #080808 0%, #000 85%);
             display: flex;
             justify-content: center;
             align-items: center;
+            /* Visualizing the "trampoline" curvature subtly */
+            border-radius: 50%;
+            box-shadow: inset 0 0 10dvmin #000;
         }
 
-        /* The Blank Card / Gravity Center */
         #vessel {
             position: absolute;
-            width: 60px;
-            height: 90px;
-            border: 1px dashed rgba(255,255,255,0.3);
-            border-radius: 4px;
-            z-index: 10;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transition: all 0.5s ease;
+            width: 12dvmin;
+            height: 18dvmin;
+            border: 1px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            z-index: 5;
+            transition: all 1s cubic-bezier(0.19, 1, 0.22, 1);
         }
 
-        #vessel.stabilizing {
+        #vessel.stabilized {
             border: 1px solid #fff;
-            box-shadow: 0 0 20px #fff;
-            background: rgba(255,255,255,0.1);
+            box-shadow: 0 0 4dvmin #fff;
+            background: rgba(255,255,255,0.05);
         }
 
         .spark {
             position: absolute;
             background: #fff;
             border-radius: 50%;
-            pointer-events: auto;
             cursor: pointer;
-            mix-blend-mode: screen;
-            filter: blur(1px) contrast(150%);
-            box-shadow: 0 0 8px #fff;
+            box-shadow: 0 0 1.5dvmin #fff;
+            will-change: transform, opacity;
+            /* Anti-particle jitter */
+            animation: jitter 0.1s infinite alternate;
         }
 
-        /* UI Elements */
-        #interface {
+        @keyframes jitter {
+            from { transform: translate(-0.15dvmin, -0.15dvmin); }
+            to { transform: translate(0.15dvmin, 0.15dvmin); }
+        }
+
+        #ui {
             position: absolute;
-            bottom: 5vh;
-            width: 100%;
+            bottom: 8dvh;
             display: flex;
             flex-direction: column;
             align-items: center;
             pointer-events: none;
         }
 
-        #progress-container {
-            width: 200px;
-            height: 2px;
+        #progress-frame {
+            width: 40dvmin;
+            height: 1px;
             background: #111;
-            margin-bottom: 10px;
+            margin-bottom: 3dvh;
         }
 
-        #progress-bar {
+        #progress-fill {
             width: 0%;
             height: 100%;
             background: #fff;
-            box-shadow: 0 0 10px #fff;
+            box-shadow: 0 0 2dvmin #fff;
+            transition: width 0.3s ease-out;
         }
 
         #manifest-btn {
             pointer-events: auto;
-            background: none;
-            border: 1px solid #fff;
-            color: #fff;
-            padding: 8px 16px;
-            text-transform: uppercase;
-            letter-spacing: 4px;
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 1.5dvh 4dvmin;
+            font-size: 1.8dvmin;
+            font-weight: bold;
+            letter-spacing: 0.8dvmin;
             cursor: pointer;
             display: none;
-            font-size: 12px;
+            text-transform: uppercase;
         }
 
-        #data-readout {
-            font-size: 9px;
-            color: #444;
-            margin-top: 8px;
-            letter-spacing: 1px;
+        #stats {
+            font-size: 1dvmin;
+            color: #333;
+            margin-top: 2dvh;
+            letter-spacing: 0.2dvmin;
         }
     </style>
 </head>
@@ -122,129 +131,127 @@
         <div id="vessel"></div>
     </div>
 
-    <div id="interface">
-        <div id="progress-container">
-            <div id="progress-bar"></div>
+    <div id="ui">
+        <div id="progress-frame">
+            <div id="progress-fill"></div>
         </div>
-        <button id="manifest-btn" onclick="manifest()">Manifest Base Card</button>
-        <div id="data-readout">
-            ENERGY: <span id="energy-val">0.000</span> | DENSITY: <span id="density-val">0.000</span>
-        </div>
+        <button id="manifest-btn" onclick="manifest()">Manifest</button>
+        <div id="stats">Ω: <span id="e-val">0.000</span> | ρ: <span id="d-val">0.000</span></div>
     </div>
 
     <script>
         const PHI = (1 + Math.sqrt(5)) / 2;
-        const PI = Math.PI;
-        const THRESHOLD = PI * PHI;
-        
-        let currentEnergy = 0;
+        const TARGET = Math.PI * PHI;
+        let energy = 0;
+
         const voidBed = document.getElementById('void-bed');
         const vessel = document.getElementById('vessel');
-        const progressBar = document.getElementById('progress-bar');
-        const energyLabel = document.getElementById('energy-val');
-        const densityLabel = document.getElementById('density-val');
+        const progressFill = document.getElementById('progress-fill');
         const manifestBtn = document.getElementById('manifest-btn');
 
-        // Logic: Calculate total mass of anti-particles in the void
-        function getVoidDensity() {
+        // Logic Loop
+        function tick() {
             const sparks = document.querySelectorAll('.spark');
-            let total = 0;
-            sparks.forEach(s => total += parseFloat(s.dataset.mass));
-            return total;
-        }
-
-        // Main Simulation Loop
-        setInterval(() => {
-            const density = getVoidDensity();
-            densityLabel.innerText = density.toFixed(3);
-
-            if (currentEnergy > 0) {
-                // Spherical Entropy: alpha and beta scale with void density
-                const alpha = 1.5 + (density / PI);
-                const beta = 0.002 * (1 + density);
-                const leakage = Math.pow(currentEnergy, alpha) * beta;
+            let density = 0;
+            sparks.forEach(s => {
+                density += parseFloat(s.dataset.mass);
                 
-                currentEnergy = Math.max(0, currentEnergy - leakage);
+                // Trampoline Gravity: Move relative coordinates toward 50% center
+                let x = parseFloat(s.dataset.x);
+                let y = parseFloat(s.dataset.y);
+                x += (50 - x) * 0.003;
+                y += (50 - y) * 0.003;
+                s.dataset.x = x;
+                s.dataset.y = y;
+                s.style.left = x + '%';
+                s.style.top = y + '%';
+            });
+
+            document.getElementById('d-val').innerText = density.toFixed(3);
+
+            if (energy > 0) {
+                // Dynamic Entropy scaling with Density
+                const alpha = 1.618 + (density / Math.PI);
+                const beta = 0.003 * (1 + density);
+                energy = Math.max(0, energy - (Math.pow(energy, alpha) * beta));
             }
 
             // Update UI
-            const percent = (currentEnergy / THRESHOLD) * 100;
-            progressBar.style.width = Math.min(100, percent) + "%";
-            energyLabel.innerText = currentEnergy.toFixed(3);
+            const p = (energy / TARGET) * 100;
+            progressFill.style.width = Math.min(100, p) + '%';
+            document.getElementById('e-val').innerText = energy.toFixed(4);
 
-            if (currentEnergy >= THRESHOLD) {
+            if (energy >= TARGET) {
                 manifestBtn.style.display = 'block';
-                vessel.classList.add('stabilizing');
+                vessel.classList.add('stabilized');
             } else {
                 manifestBtn.style.display = 'none';
-                vessel.classList.remove('stabilizing');
+                vessel.classList.remove('stabilized');
             }
 
-            // Move sparks toward the center (Trampoline Gravity)
-            const sparks = document.querySelectorAll('.spark');
-            sparks.forEach(spark => {
-                const x = parseFloat(spark.style.left);
-                const y = parseFloat(spark.style.top);
-                const dx = 50 - x;
-                const dy = 50 - y;
-                // Move 0.5% closer to center every frame
-                spark.style.left = (x + dx * 0.005) + "%";
-                spark.style.top = (y + dy * 0.005) + "%";
-            });
+            requestAnimationFrame(tick);
+        }
 
-        }, 50);
-
-        function createAntiParticle() {
-            const spark = document.createElement('div');
-            const initialMass = Math.random() * PHI;
-            let currentMass = initialMass;
-            const halfLife = 3000; // 3 seconds for state loss
-            const birthTime = Date.now();
-
-            spark.className = 'spark';
-            spark.dataset.mass = currentMass;
-            spark.style.left = Math.random() * 100 + "%";
-            spark.style.top = Math.random() * 100 + "%";
+        function createSpark() {
+            const s = document.createElement('div');
+            const mass = Math.random() * PHI;
+            const lifespan = 2000 + (Math.random() * 2000);
+            const birth = Date.now();
             
-            voidBed.appendChild(spark);
+            const x = Math.random() * 100;
+            const y = Math.random() * 100;
 
-            const transition = setInterval(() => {
-                const age = Date.now() - birthTime;
-                currentMass = initialMass * Math.pow(0.5, age / halfLife);
-                spark.dataset.mass = currentMass;
+            s.className = 'spark';
+            s.dataset.mass = mass;
+            s.dataset.x = x;
+            s.dataset.y = y;
+            s.style.left = x + '%';
+            s.style.top = y + '%';
 
-                const size = 2 + (currentMass * 8);
-                spark.style.width = size + "px";
-                spark.style.height = size + "px";
-                spark.style.opacity = currentMass / PHI;
+            voidBed.appendChild(s);
+
+            const decay = setInterval(() => {
+                const age = Date.now() - birth;
+                const currentMass = mass * Math.pow(0.5, age / lifespan);
+                s.dataset.mass = currentMass;
+
+                // Relative size using dvmin
+                const size = 0.5 + (currentMass * 1.5);
+                s.style.width = size + 'dvmin';
+                s.style.height = size + 'dvmin';
+                s.style.opacity = currentMass / PHI;
 
                 if (currentMass < 0.01) {
-                    clearInterval(transition);
-                    if (spark.parentNode) voidBed.removeChild(spark);
+                    clearInterval(decay);
+                    if (s.parentNode) voidBed.removeChild(s);
                 }
             }, 50);
 
-            spark.onclick = () => {
-                currentEnergy += currentMass;
-                clearInterval(transition);
-                voidBed.removeChild(spark);
+            s.onpointerdown = (e) => {
+                energy += parseFloat(s.dataset.mass);
+                clearInterval(decay);
+                voidBed.removeChild(s);
             };
         }
 
         function manifest() {
-            alert("BASE CARD #001 STABILIZED INTO DIMENSION. \nEnergy Overflow: " + (currentEnergy - THRESHOLD).toFixed(5));
-            currentEnergy = 0; // Reset for POC
+            voidBed.style.transform = 'scale(0) rotate(720deg)';
+            voidBed.style.opacity = '0';
+            setTimeout(() => {
+                alert("STABILIZATION SUCCESSFUL\nAnti-matter converted to Base Card #001");
+                location.reload();
+            }, 1000);
         }
 
-        // Spawning logic (Anti-particle influx)
-        (function spawn() {
-            const delay = 400 + Math.random() * 1000;
+        // Spawn logic
+        (function spawner() {
             setTimeout(() => {
-                createAntiParticle();
-                spawn();
-            }, delay);
+                createSpark();
+                spawner();
+            }, 400 + Math.random() * 1200);
         })();
 
+        requestAnimationFrame(tick);
     </script>
 </body>
 </html>
