@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#000000">
-    <title>PHIFOLD: RC-Build</title>
-    <script src="https://cdn.jsdelivr.net/npm/pixi.js@8.1.0/dist/pixi.min.js"></script>
+    <title>PHIFOLD: RC 8.15.0</title>
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@8.15.0-rc/dist/pixi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/planck@1.4.2/dist/planck.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tone@15.1.22/build/Tone.min.js"></script>
     <style>
@@ -16,19 +16,20 @@
             width: 100dvw; height: 100dvh; 
             display: flex; justify-content: center; align-items: center; 
         }
-        
-        /* Metaball Effect Layer */
-        #liquid-fx { 
-            filter: contrast(35) blur(12px); 
+
+        /* Essential Metaball logic: The contrast/blur must be on a container wrapper */
+        #liquid-layer {
             width: 100%; height: 100%;
+            filter: contrast(30) blur(12px);
+            background: #000;
         }
 
         #ui { 
-            position: fixed; bottom: 8%; width: 100%; text-align: center; 
+            position: fixed; bottom: 8dvh; width: 100%; text-align: center; 
             color: #444; font-family: monospace; letter-spacing: 0.4rem; 
             pointer-events: none; z-index: 100; font-size: 11px;
         }
-
+        
         #intro {
             position: fixed; inset: 0; background: #000; z-index: 1000;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -39,101 +40,100 @@
 <body>
 
     <div id="intro" onclick="start()">
-        <h1 style="letter-spacing: 1.5rem; font-weight: 100; margin-bottom: 20px;">PHIFOLD</h1>
-        <p style="color:#333; letter-spacing: 0.2rem;">[ ENGAGE VOID ]</p>
+        <h1 style="letter-spacing: 2rem; font-weight: 100; margin-bottom: 20px;">PHIFOLD</h1>
+        <p style="color:#555;">[ CONNECT TO SOURCE ]</p>
     </div>
     
     <div id="canvas-container">
-        <div id="liquid-fx"></div>
+        <div id="liquid-layer"></div>
     </div>
     
-    <div id="ui">CORE_STABILITY: <span id="idx" style="color:#888">0.000</span></div>
+    <div id="ui">STABILITY_RATIO: <span id="idx">0.000</span></div>
 
     <script>
         const { Vec2, World, Circle, DistanceJoint } = planck;
         const PHI = 1.61803398875;
         const THRESHOLD = Math.PI * PHI;
-        const SCALE = 25; // Visual mapping scale
+        const SCALE = 25; // Mapping Planck meters to Pixi pixels
 
-        let app, world, drone, synth, energy = 0, clusters = [], active = false;
+        let app, world, drone, energy = 0, clusters = [], active = false;
 
         async function start() {
-            try {
-                // 1. Initialize Tone.js
-                await Tone.start();
-                document.getElementById('intro').remove();
-                
-                drone = new Tone.Oscillator(55 * PHI, "sine").toDestination().start();
-                drone.volume.value = -30;
-                synth = new Tone.MembraneSynth().toDestination();
+            await Tone.start();
+            document.getElementById('intro').style.display = 'none';
 
-                // 2. Initialize PIXI v8.1.0-rc
-                app = new PIXI.Application();
-                await app.init({ 
-                    resizeTo: window,
-                    backgroundColor: 0x000000,
-                    antialias: true,
-                    resolution: window.devicePixelRatio || 1
-                });
-                document.getElementById('liquid-fx').appendChild(app.canvas);
+            // 1. Initialize PIXI with the RC link
+            app = new PIXI.Application();
+            await app.init({ 
+                resizeTo: window,
+                backgroundColor: 0x000000,
+                antialias: true,
+                resolution: window.devicePixelRatio || 1,
+                preference: 'webgl' // RC versions sometimes struggle with WebGPU auto-selection
+            });
+            document.getElementById('liquid-layer').appendChild(app.canvas);
 
-                // 3. Setup Physics
-                world = new World(Vec2(0, 0));
+            // 2. Initialize Audio
+            drone = new Tone.PolySynth(Tone.Synth).toDestination();
+            drone.volume.value = -30;
+            drone.triggerAttack(["F#2", "C#3"]);
 
-                // 4. Genesis Center Mark
-                const card = new PIXI.Graphics()
-                    .rect(-40, -60, 80, 120)
-                    .stroke({ width: 1, color: 0x111111 });
-                card.x = app.screen.width / 2;
-                card.y = app.screen.height / 2;
-                app.stage.addChild(card);
+            // 3. Initialize Physics
+            world = new World(Vec2(0, 0));
 
-                active = true;
+            // 4. Genesis Target (Static)
+            const target = new PIXI.Graphics()
+                .rect(-40, -60, 80, 120)
+                .stroke({ width: 2, color: 0x111111 });
+            target.x = app.screen.width / 2;
+            target.y = app.screen.height / 2;
+            app.stage.addChild(target);
 
-                // 5. Lifecycle Loops
-                app.ticker.add((ticker) => update(ticker.deltaMS));
-                setInterval(() => { if(active && clusters.length < 12) spawn(); }, 1400);
-                window.addEventListener('pointerdown', pulse);
-
-                // Initial burst
-                for(let i=0; i<4; i++) spawn();
-
-            } catch (err) {
-                console.error("Initialization Failed:", err);
-            }
+            active = true;
+            
+            // Interaction
+            window.addEventListener('pointerdown', pulse);
+            
+            // Start loops
+            app.ticker.add(update);
+            setInterval(() => { if(active && clusters.length < 12) spawn(); }, 1400);
+            
+            // Immediate first spark
+            spawn();
         }
 
         function spawn() {
             const angle = Math.random() * Math.PI * 2;
-            const radius = 18; 
-            const sx = Math.cos(angle) * radius;
-            const sy = Math.sin(angle) * radius;
+            const dist = 12; // Planck meters
+            const origin = Vec2(Math.cos(angle) * dist, Math.sin(angle) * dist);
             
             const cluster = { bodies: [], graphics: [], mass: 0 };
+            const nodes = 2;
 
-            // Create unstable binary pairs
-            for(let i = 0; i < 2; i++) {
-                const mass = 0.35 + Math.random() * 0.5;
+            for(let i = 0; i < nodes; i++) {
+                const mass = 0.5 + Math.random() * 0.5;
                 const body = world.createDynamicBody({
-                    position: Vec2(sx + (i * 0.5), sy),
-                    linearDamping: 1.2,
-                    angularDamping: 0.8
+                    position: Vec2(origin.x + (i * 0.8), origin.y),
+                    linearDamping: 1.2
                 });
-                body.createFixture(Circle(mass * 0.6), { density: 1, friction: 0.1 });
+                body.createFixture(Circle(mass * 0.6), 1);
 
-                const g = new PIXI.Graphics().circle(0, 0, mass * 25).fill(0xffffff);
-                app.stage.addChild(g);
+                const graphics = new PIXI.Graphics()
+                    .circle(0, 0, mass * 22)
+                    .fill(0xffffff);
+                app.stage.addChild(graphics);
 
                 cluster.bodies.push(body);
-                cluster.graphics.push(g);
+                cluster.graphics.push(graphics);
                 cluster.mass += mass;
             }
 
+            // Bind nodes into a molecular blob
             world.createJoint(DistanceJoint({
                 bodyA: cluster.bodies[0],
                 bodyB: cluster.bodies[1],
                 length: 0.8,
-                frequencyHz: 4.0,
+                frequencyHz: 3.0,
                 dampingRatio: 0.2
             }));
 
@@ -146,53 +146,53 @@
             const py = (e.clientY - app.screen.height / 2) / SCALE;
             const pVec = Vec2(px, py);
 
-            synth.triggerAttackRelease("A1", "32n");
-
             clusters.forEach(c => c.bodies.forEach(b => {
                 const d = Vec2.sub(b.getPosition(), pVec);
-                const dist = d.length();
-                if (dist < 12) {
-                    b.applyLinearImpulse(d.normalize().mul(12 / (dist + 1)), b.getWorldCenter());
+                const len = d.length();
+                if (len < 10) {
+                    b.applyLinearImpulse(d.normalize().mul(12 / (len + 1)), b.getWorldCenter());
                 }
             }));
         }
 
-        function update(dt) {
+        function update(ticker) {
             if(!active) return;
             
-            // Step physics based on frame delta
+            // Physics Step
             world.step(1/60);
-
+            
             const midX = app.screen.width / 2;
             const midY = app.screen.height / 2;
+            const time = performance.now() * 0.004;
 
-            clusters.forEach(c => {
+            clusters.forEach((c, cIdx) => {
                 c.bodies.forEach((b, i) => {
                     const pos = b.getPosition();
                     const dist = pos.length();
                     
-                    // Gravitational attraction
-                    b.applyForceToCenter(Vec2(-pos.x, -pos.y).normalize().mul(2.2 * c.mass));
+                    // Central Attraction (Inverse gravity)
+                    b.applyForceToCenter(Vec2(-pos.x, -pos.y).normalize().mul(2.0 * c.mass));
 
-                    // Sync graphics to physics
+                    // Graphics Update
                     const g = c.graphics[i];
                     g.x = midX + (pos.x * SCALE);
                     g.y = midY + (pos.y * SCALE);
+                    
+                    // Unstable Pulsation
+                    const pulse = 1 + (Math.sin(time + (cIdx * PHI)) * 0.2);
+                    g.scale.set(pulse);
 
-                    // Energy collection at the core
-                    if (dist < 6) energy += 0.015;
+                    if (dist < 4) energy += 0.015;
                 });
             });
 
-            // Scarcity entropy: energy decays over time
+            // Entropy logic
             energy = Math.max(0, energy - (Math.pow(energy, 1.3) * 0.006));
-            const stability = Math.min(1, energy / THRESHOLD);
+            const ratio = Math.min(1, energy / THRESHOLD);
+            document.getElementById('idx').innerText = ratio.toFixed(3);
             
-            document.getElementById('idx').innerText = stability.toFixed(3);
-            
-            // Sound modulation
-            drone.frequency.value = (55 * PHI) + (stability * 220);
-            drone.volume.value = -30 + (stability * 10);
+            // Audio Feedback: Pitch rises with stability
+            drone.set({ detune: ratio * 600 });
         }
     </script>
 </body>
