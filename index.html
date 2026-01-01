@@ -1,18 +1,250 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <link rel="icon" type="image/svg+xml" href="/vite.svg">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vite Template</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PHIfold: Genesis Transition</title>
+    <style>
+        :root {
+            --phi: 1.61803398875;
+            --pi: 3.14159265359;
+            --threshold: 5.0832; /* PI * PHI */
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #050505;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 1:1 Responsive Container (The Trampoline) */
+        #void-bed {
+            position: relative;
+            width: 90vmin;
+            height: 90vmin;
+            background: radial-gradient(circle at center, #0a0a0a 0%, #000 80%);
+            border: 1px solid #1a1a1a;
+            border-radius: 50%;
+            box-shadow: 0 0 50px rgba(255,255,255,0.02);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* The Blank Card / Gravity Center */
+        #vessel {
+            position: absolute;
+            width: 60px;
+            height: 90px;
+            border: 1px dashed rgba(255,255,255,0.3);
+            border-radius: 4px;
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.5s ease;
+        }
+
+        #vessel.stabilizing {
+            border: 1px solid #fff;
+            box-shadow: 0 0 20px #fff;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .spark {
+            position: absolute;
+            background: #fff;
+            border-radius: 50%;
+            pointer-events: auto;
+            cursor: pointer;
+            mix-blend-mode: screen;
+            filter: blur(1px) contrast(150%);
+            box-shadow: 0 0 8px #fff;
+        }
+
+        /* UI Elements */
+        #interface {
+            position: absolute;
+            bottom: 5vh;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        #progress-container {
+            width: 200px;
+            height: 2px;
+            background: #111;
+            margin-bottom: 10px;
+        }
+
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background: #fff;
+            box-shadow: 0 0 10px #fff;
+        }
+
+        #manifest-btn {
+            pointer-events: auto;
+            background: none;
+            border: 1px solid #fff;
+            color: #fff;
+            padding: 8px 16px;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            cursor: pointer;
+            display: none;
+            font-size: 12px;
+        }
+
+        #data-readout {
+            font-size: 9px;
+            color: #444;
+            margin-top: 8px;
+            letter-spacing: 1px;
+        }
+    </style>
 </head>
-
 <body>
-  <main>
-    <h1>Welcome!<br> this is a empty page by default to waste zero time removing stuff.</h1>
-  </main>
-  <script type="module" src="/src/main.tsx"></script>
-</body>
 
+    <div id="void-bed">
+        <div id="vessel"></div>
+    </div>
+
+    <div id="interface">
+        <div id="progress-container">
+            <div id="progress-bar"></div>
+        </div>
+        <button id="manifest-btn" onclick="manifest()">Manifest Base Card</button>
+        <div id="data-readout">
+            ENERGY: <span id="energy-val">0.000</span> | DENSITY: <span id="density-val">0.000</span>
+        </div>
+    </div>
+
+    <script>
+        const PHI = (1 + Math.sqrt(5)) / 2;
+        const PI = Math.PI;
+        const THRESHOLD = PI * PHI;
+        
+        let currentEnergy = 0;
+        const voidBed = document.getElementById('void-bed');
+        const vessel = document.getElementById('vessel');
+        const progressBar = document.getElementById('progress-bar');
+        const energyLabel = document.getElementById('energy-val');
+        const densityLabel = document.getElementById('density-val');
+        const manifestBtn = document.getElementById('manifest-btn');
+
+        // Logic: Calculate total mass of anti-particles in the void
+        function getVoidDensity() {
+            const sparks = document.querySelectorAll('.spark');
+            let total = 0;
+            sparks.forEach(s => total += parseFloat(s.dataset.mass));
+            return total;
+        }
+
+        // Main Simulation Loop
+        setInterval(() => {
+            const density = getVoidDensity();
+            densityLabel.innerText = density.toFixed(3);
+
+            if (currentEnergy > 0) {
+                // Spherical Entropy: alpha and beta scale with void density
+                const alpha = 1.5 + (density / PI);
+                const beta = 0.002 * (1 + density);
+                const leakage = Math.pow(currentEnergy, alpha) * beta;
+                
+                currentEnergy = Math.max(0, currentEnergy - leakage);
+            }
+
+            // Update UI
+            const percent = (currentEnergy / THRESHOLD) * 100;
+            progressBar.style.width = Math.min(100, percent) + "%";
+            energyLabel.innerText = currentEnergy.toFixed(3);
+
+            if (currentEnergy >= THRESHOLD) {
+                manifestBtn.style.display = 'block';
+                vessel.classList.add('stabilizing');
+            } else {
+                manifestBtn.style.display = 'none';
+                vessel.classList.remove('stabilizing');
+            }
+
+            // Move sparks toward the center (Trampoline Gravity)
+            const sparks = document.querySelectorAll('.spark');
+            sparks.forEach(spark => {
+                const x = parseFloat(spark.style.left);
+                const y = parseFloat(spark.style.top);
+                const dx = 50 - x;
+                const dy = 50 - y;
+                // Move 0.5% closer to center every frame
+                spark.style.left = (x + dx * 0.005) + "%";
+                spark.style.top = (y + dy * 0.005) + "%";
+            });
+
+        }, 50);
+
+        function createAntiParticle() {
+            const spark = document.createElement('div');
+            const initialMass = Math.random() * PHI;
+            let currentMass = initialMass;
+            const halfLife = 3000; // 3 seconds for state loss
+            const birthTime = Date.now();
+
+            spark.className = 'spark';
+            spark.dataset.mass = currentMass;
+            spark.style.left = Math.random() * 100 + "%";
+            spark.style.top = Math.random() * 100 + "%";
+            
+            voidBed.appendChild(spark);
+
+            const transition = setInterval(() => {
+                const age = Date.now() - birthTime;
+                currentMass = initialMass * Math.pow(0.5, age / halfLife);
+                spark.dataset.mass = currentMass;
+
+                const size = 2 + (currentMass * 8);
+                spark.style.width = size + "px";
+                spark.style.height = size + "px";
+                spark.style.opacity = currentMass / PHI;
+
+                if (currentMass < 0.01) {
+                    clearInterval(transition);
+                    if (spark.parentNode) voidBed.removeChild(spark);
+                }
+            }, 50);
+
+            spark.onclick = () => {
+                currentEnergy += currentMass;
+                clearInterval(transition);
+                voidBed.removeChild(spark);
+            };
+        }
+
+        function manifest() {
+            alert("BASE CARD #001 STABILIZED INTO DIMENSION. \nEnergy Overflow: " + (currentEnergy - THRESHOLD).toFixed(5));
+            currentEnergy = 0; // Reset for POC
+        }
+
+        // Spawning logic (Anti-particle influx)
+        (function spawn() {
+            const delay = 400 + Math.random() * 1000;
+            setTimeout(() => {
+                createAntiParticle();
+                spawn();
+            }, delay);
+        })();
+
+    </script>
+</body>
 </html>
