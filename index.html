@@ -4,195 +4,220 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#000000">
-    <title>PHIFOLD: RC 8.15.0</title>
+    <title>PHIFOLD: Relativistic Genesis</title>
+    
     <script src="https://cdn.jsdelivr.net/npm/pixi.js@8.15.0-rc/dist/pixi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/planck@1.4.2/dist/planck.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tone@15.1.22/build/Tone.min.js"></script>
+
     <style>
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-        body, html { width: 100%; height: 100%; background: #000; overflow: hidden; touch-action: none; }
-        
-        #canvas-container { 
-            width: 100dvw; height: 100dvh; 
-            display: flex; justify-content: center; align-items: center; 
-        }
-
-        /* Essential Metaball logic: The contrast/blur must be on a container wrapper */
-        #liquid-layer {
-            width: 100%; height: 100%;
-            filter: contrast(30) blur(12px);
-            background: #000;
-        }
-
-        #ui { 
-            position: fixed; bottom: 8dvh; width: 100%; text-align: center; 
-            color: #444; font-family: monospace; letter-spacing: 0.4rem; 
-            pointer-events: none; z-index: 100; font-size: 11px;
-        }
-        
-        #intro {
-            position: fixed; inset: 0; background: #000; z-index: 1000;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            cursor: pointer; font-family: monospace; color: #fff;
-        }
+        body, html { margin: 0; padding: 0; background: #000; overflow: hidden; touch-action: none; cursor: crosshair; }
+        #canvas-container { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        canvas { filter: contrast(35) blur(10px); background: #000; width: 95vmin; height: 95vmin; }
+        #ui { position: fixed; bottom: 5%; width: 100%; text-align: center; color: #222; font-family: monospace; letter-spacing: 0.3rem; z-index: 100; font-size: 1.1vmin; }
+        #intro { position: fixed; inset: 0; background: #000; z-index: 1000; display: flex; align-items: center; justify-content: center; cursor: pointer; font-family: monospace; letter-spacing: 0.8rem; color: #fff; text-transform: uppercase; transition: opacity 1s ease; }
     </style>
 </head>
 <body>
 
-    <div id="intro" onclick="start()">
-        <h1 style="letter-spacing: 2rem; font-weight: 100; margin-bottom: 20px;">PHIFOLD</h1>
-        <p style="color:#555;">[ CONNECT TO SOURCE ]</p>
-    </div>
-    
-    <div id="canvas-container">
-        <div id="liquid-layer"></div>
-    </div>
-    
-    <div id="ui">STABILITY_RATIO: <span id="idx">0.000</span></div>
+    <div id="intro" onclick="bootEngine()">[Collapse the State]</div>
+    <div id="canvas-container"></div>
+    <div id="ui">POTENTIALITY: <span id="idx">0.000</span> / 5.083</div>
 
     <script>
+        /**
+         * ============================================================================
+         * THE GRAND THEORY: PHIFOLD GENESIS
+         * ============================================================================
+         * * THE PREMISE:
+         * You are at the center of 'The Void'—a dimension of high-density metadata. 
+         * Matter does not exist here yet; it only exists as 'Anti-particles' (sparks) 
+         * that flicker into existence and immediately try to decay back into nothing.
+         * * THE OBJECTIVE (THE GAME):
+         * Your goal is to stabilize these fleeting sparks into a 'Genesis Node' 
+         * (the central card vessel) until you reach the energy threshold (PI * PHI).
+         * Once reached, the metadata 'collapses' into a physical, permanent Base Card.
+         * * THE MECHANICS (EFFORTLESS EFFORT):
+         * 1. THE TRAMPOLINE: The void is a flexible fabric. As more sparks enter, 
+         * their collective mass causes the void to 'dip' like a trampoline.
+         * 2. THE GRAVITY: Sparks naturally roll toward the center. However, the 
+         * vacuum pressure (entropy) is constantly dissolving your collected energy.
+         * 3. THE KINETIC PULSE: You do not 'click' sparks. You 'pulse' the void. 
+         * By tapping, you create an anti-gravity ripple that pushes matter. 
+         * You must 'herd' the sparks toward the center faster than entropy leaks 
+         * the energy out.
+         * 4. THE LENSING: As energy grows, the visual field warps (Black Hole effect).
+         * This makes it harder to see, but increases the gravitational pull.
+         * * THE WIN STATE:
+         * Reach 5.083 Potentiality to stabilize the first card of the dimension.
+         */
+
         const { Vec2, World, Circle, DistanceJoint } = planck;
-        const PHI = 1.61803398875;
-        const THRESHOLD = Math.PI * PHI;
-        const SCALE = 25; // Mapping Planck meters to Pixi pixels
-
+        const PHI = (1 + Math.sqrt(5)) / 2;
+        const TARGET = Math.PI * PHI; // The physical constant required for manifestation.
+        
         let app, world, drone, energy = 0, clusters = [], active = false;
+        let gridLayer, liquidLayer;
 
-        async function start() {
+        async function bootEngine() {
+            /**
+             * SONIC MATHEMATICS:
+             * We use 432Hz (the 'frequency of the universe') divided by PHI.
+             * This creates a 'Scarcity Tone'—a hollow, deep sound that represents 
+             * the hunger of the void. As you succeed, the pitch rises toward harmony.
+             */
             await Tone.start();
-            document.getElementById('intro').style.display = 'none';
+            document.getElementById('intro').style.opacity = '0';
+            setTimeout(() => document.getElementById('intro').remove(), 1000);
 
-            // 1. Initialize PIXI with the RC link
+            drone = new Tone.Oscillator(432 * (1/PHI), "sine").toDestination().start();
+            drone.volume.value = -20;
+
+            // PIXI v8: GPU-based rendering for the "Liquid Metadata" look.
             app = new PIXI.Application();
-            await app.init({ 
-                resizeTo: window,
-                backgroundColor: 0x000000,
-                antialias: true,
-                resolution: window.devicePixelRatio || 1,
-                preference: 'webgl' // RC versions sometimes struggle with WebGPU auto-selection
-            });
-            document.getElementById('liquid-layer').appendChild(app.canvas);
+            await app.init({ width: 1000, height: 1000, backgroundColor: 0x000000 });
+            document.getElementById('canvas-container').appendChild(app.canvas);
 
-            // 2. Initialize Audio
-            drone = new Tone.PolySynth(Tone.Synth).toDestination();
-            drone.volume.value = -30;
-            drone.triggerAttack(["F#2", "C#3"]);
+            gridLayer = new PIXI.Graphics();
+            liquidLayer = new PIXI.Container();
+            app.stage.addChild(gridLayer);
+            app.stage.addChild(liquidLayer);
 
-            // 3. Initialize Physics
+            // WORLD PHYSICS: A frictionless vacuum.
             world = new World(Vec2(0, 0));
-
-            // 4. Genesis Target (Static)
-            const target = new PIXI.Graphics()
-                .rect(-40, -60, 80, 120)
-                .stroke({ width: 2, color: 0x111111 });
-            target.x = app.screen.width / 2;
-            target.y = app.screen.height / 2;
-            app.stage.addChild(target);
-
             active = true;
-            
-            // Interaction
-            window.addEventListener('pointerdown', pulse);
-            
-            // Start loops
-            app.ticker.add(update);
-            setInterval(() => { if(active && clusters.length < 12) spawn(); }, 1400);
-            
-            // Immediate first spark
-            spawn();
+
+            app.ticker.add(heartbeat);
+            setInterval(() => { if(clusters.length < 18) spawnFluctuation(); }, 1400);
+            app.canvas.addEventListener('pointerdown', handleInteraction);
         }
 
-        function spawn() {
+        /**
+         * SPAWNING LOGIC:
+         * Anti-particles appear in pairs (Quantum Entanglement). 
+         * They are unstable and will shrink/disappear if not pushed into the center.
+         */
+        function spawnFluctuation() {
             const angle = Math.random() * Math.PI * 2;
-            const dist = 12; // Planck meters
-            const origin = Vec2(Math.cos(angle) * dist, Math.sin(angle) * dist);
-            
+            const dist = 48;
+            const pos = Vec2(Math.cos(angle) * dist, Math.sin(angle) * dist);
             const cluster = { bodies: [], graphics: [], mass: 0 };
-            const nodes = 2;
 
-            for(let i = 0; i < nodes; i++) {
-                const mass = 0.5 + Math.random() * 0.5;
-                const body = world.createDynamicBody({
-                    position: Vec2(origin.x + (i * 0.8), origin.y),
-                    linearDamping: 1.2
+            for(let i = 0; i < 2; i++) {
+                const m = 0.2 + (Math.random() * PHI * 0.5);
+                const b = world.createDynamicBody({ 
+                    position: Vec2(pos.x + i, pos.y), 
+                    linearDamping: 1.8 // Simulates a 'viscous nothingness'
                 });
-                body.createFixture(Circle(mass * 0.6), 1);
+                b.createFixture(Circle(m * 1.5), 1.0);
 
-                const graphics = new PIXI.Graphics()
-                    .circle(0, 0, mass * 22)
-                    .fill(0xffffff);
-                app.stage.addChild(graphics);
+                const g = new PIXI.Graphics().circle(0, 0, m * 30).fill(0xffffff);
+                liquidLayer.addChild(g);
 
-                cluster.bodies.push(body);
-                cluster.graphics.push(graphics);
-                cluster.mass += mass;
+                cluster.bodies.push(b);
+                cluster.graphics.push(g);
+                cluster.mass += m;
             }
 
-            // Bind nodes into a molecular blob
             world.createJoint(DistanceJoint({
-                bodyA: cluster.bodies[0],
-                bodyB: cluster.bodies[1],
-                length: 0.8,
-                frequencyHz: 3.0,
-                dampingRatio: 0.2
+                bodyA: cluster.bodies[0], bodyB: cluster.bodies[1],
+                length: 2.0, frequencyHz: 3.0, dampingRatio: 0.5
             }));
-
             clusters.push(cluster);
         }
 
-        function pulse(e) {
-            if(!active) return;
-            const px = (e.clientX - app.screen.width / 2) / SCALE;
-            const py = (e.clientY - app.screen.height / 2) / SCALE;
+        /**
+         * THE KINETIC PULSE:
+         * The player's only tool. It creates a shockwave.
+         * Strategically push sparks into the 'Event Horizon' (the center).
+         */
+        function handleInteraction(e) {
+            const rect = app.canvas.getBoundingClientRect();
+            const px = ((e.clientX - rect.left) / rect.width * 100) - 50;
+            const py = ((e.clientY - rect.top) / rect.height * 100) - 50;
             const pVec = Vec2(px, py);
 
             clusters.forEach(c => c.bodies.forEach(b => {
                 const d = Vec2.sub(b.getPosition(), pVec);
                 const len = d.length();
-                if (len < 10) {
-                    b.applyLinearImpulse(d.normalize().mul(12 / (len + 1)), b.getWorldCenter());
-                }
+                if (len < 30) b.applyLinearImpulse(d.normalize().mul(25 / (len + 1)), b.getWorldCenter());
             }));
         }
 
-        function update(ticker) {
+        /**
+         * THE PHYSICS OF THE WELL:
+         * Gravity here is RELATIVISTIC. The more mass you collect, 
+         * the deeper the grid 'dips' (Spherical Distortion).
+         */
+        function heartbeat() {
             if(!active) return;
-            
-            // Physics Step
             world.step(1/60);
-            
-            const midX = app.screen.width / 2;
-            const midY = app.screen.height / 2;
-            const time = performance.now() * 0.004;
 
-            clusters.forEach((c, cIdx) => {
+            const totalMass = clusters.reduce((acc, c) => acc + c.mass, 0);
+            const K = Math.min(10, totalMass * 0.8); // Curvature Constant
+
+            // GRID WARPING: Visualizes the 'Trampoline' bending under the weight of mass.
+            gridLayer.clear();
+            gridLayer.setStrokeStyle(1, 0xFFFFFF, 0.08);
+            for(let i = -10; i <= 10; i++) {
+                drawWarpedLine(-50, i * 5, 50, i * 5, K);
+                drawWarpedLine(i * 5, -50, i * 5, 50, K);
+            }
+
+            clusters.forEach((c) => {
                 c.bodies.forEach((b, i) => {
                     const pos = b.getPosition();
-                    const dist = pos.length();
+                    const r = pos.length();
                     
-                    // Central Attraction (Inverse gravity)
-                    b.applyForceToCenter(Vec2(-pos.x, -pos.y).normalize().mul(2.0 * c.mass));
+                    // GRAVITATIONAL LENSING: Forces follow the Inverse Square Law.
+                    const gravity = (K * c.mass * 10) / (Math.pow(r, 2) + 2);
+                    b.applyForceToCenter(Vec2(-pos.x, -pos.y).normalize().mul(gravity));
 
-                    // Graphics Update
+                    // SPHERICAL DISTORTION: Elements stretch into arcs near the center.
+                    const warp = 1 + (K / (r + 10));
+                    const stretch = 1 + (K / (r * 2 + 1));
                     const g = c.graphics[i];
-                    g.x = midX + (pos.x * SCALE);
-                    g.y = midY + (pos.y * SCALE);
                     
-                    // Unstable Pulsation
-                    const pulse = 1 + (Math.sin(time + (cIdx * PHI)) * 0.2);
-                    g.scale.set(pulse);
+                    g.x = 500 + (pos.x * 10) / warp;
+                    g.y = 500 + (pos.y * 10) / warp;
+                    g.scale.set(1 / warp, (1 / warp) * stretch);
+                    g.rotation = Math.atan2(pos.y, pos.x) + Math.PI / 2;
 
-                    if (dist < 4) energy += 0.015;
+                    // ABSORPTION: Stabilizing metadata into energy.
+                    if (r < 10) energy += 0.015;
                 });
             });
 
-            // Entropy logic
-            energy = Math.max(0, energy - (Math.pow(energy, 1.3) * 0.006));
-            const ratio = Math.min(1, energy / THRESHOLD);
-            document.getElementById('idx').innerText = ratio.toFixed(3);
+            // SCARCITY DECAY: Entropy is the antagonist. 
+            // It gets stronger as you get closer to the goal.
+            energy = Math.max(0, energy - (Math.pow(energy, 1.45) * 0.006));
             
-            // Audio Feedback: Pitch rises with stability
-            drone.set({ detune: ratio * 600 });
+            document.getElementById('idx').innerText = energy.toFixed(3);
+            drone.frequency.value = (432 * (1/PHI)) + (energy * 22);
+
+            // WIN CHECK: Collapse the state into a card.
+            if (energy >= TARGET) {
+                active = false;
+                alert("STABILITY REACHED. STATE COLLAPSED INTO GENESIS CARD.");
+                location.reload();
+            }
+        }
+
+        // Helper to project the 'Trampoline' lines
+        function drawWarpedLine(x1, y1, x2, y2, K) {
+            const p = project(x1, y1, K);
+            gridLayer.moveTo(p.x, p.y);
+            for(let t = 0; t <= 1; t += 0.1) {
+                const pt = project(x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, K);
+                gridLayer.lineTo(pt.x, pt.y);
+            }
+            gridLayer.stroke();
+        }
+
+        function project(x, y, K) {
+            const r = Math.sqrt(x*x + y*y);
+            const warp = 1 + (K / (r + 15));
+            return { x: 500 + (x * 10) / warp, y: 500 + (y * 10) / warp };
         }
     </script>
 </body>
